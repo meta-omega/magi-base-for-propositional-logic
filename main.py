@@ -176,22 +176,23 @@ def aAndpListAux(f, S):
 
 def buildTheGraph(S):
     global G
-    G = DGraph()
+    global d
+    d = {}
     for k in extension:
         if not extension[k] == []:
-            G.nodes[k] = GraphNode(k)
+            d[k] = GraphNode(k)
             global l
             l = []
             buildTheGraphAux(extension[k][0], S)
-            G.nodes[k].arrowsTo = l
-    G.findOrphans()
+            d[k].arrowsTo = l.copy()
+    print("d:", d)
+    G = DGraph(d)
 
 def buildTheGraphAux(N, S):
-    if N.symbol[0] in S and not N.symbol in l:
-        l.append(N.symbol)
+    if N.symbol[0] in S and N.symbol in d and not d[N.symbol] in l:
+        l.append(d[N.symbol])
     for ch in N.children:
         buildTheGraphAux(ch, S)
-
 
 f = Formula("^", [], "")
 f.children.append(Formula("A", [], ""))
