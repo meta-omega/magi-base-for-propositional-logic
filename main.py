@@ -7,14 +7,24 @@ class Formula:
         self.text = text
 
     def updateText(self):
-        self.text = toText(self)
+        self.text = self.toText()
+
+    def toText(self):
+        if len(self.children) == 0:
+            r = self.symbol
+        else:
+            r = self.symbol + '('
+            for i in range(len(self.children) - 1):
+                r += self.children[i].toText() + ','
+            r += self.children[-1].toText() + ')'
+        return r
 
     def toTree(self):
         self.children.clear()
-        self.symbol = ""
+        self.symbol = ''
         if len(self.text) > 0:
             i = 0
-            while i < len(self.text) and self.text[i] != "(":
+            while i < len(self.text) and self.text[i] != '(':
                 i += 1
             if i == len(self.text):
                 self.symbol = self.text
@@ -27,24 +37,24 @@ class Formula:
                     goOn = True
                     while goOn:
                         i += 1
-                        if self.text[i] == "(":
+                        if self.text[i] == '(':
                             parenthesis += 1
-                        elif self.text[i] == ")":
+                        elif self.text[i] == ')':
                             parenthesis -= 1
 
                         if parenthesis < 0:
                             goOn = False
-                        elif parenthesis == 0 and self.text[i] == ",":
+                        elif parenthesis == 0 and self.text[i] == ',':
                             goOn = False
                     s = (self.text[m:])[:i-m]
-                    self.children.append(Formula("", [], s))
+                    self.children.append(Formula('', [], s))
                     self.children[-1].toTree()
 
 class GraphNode:
     def __init__(self, name):
         self.name = name
-        self.arrowsTo = [] #lista de otros GraphNode a los que apunta.
-        self.loops = "no idea"
+        self.arrowsTo = [] # lista de otros GraphNode a los que apunta.
+        self.loops = 'no idea'
 
 class DGraph:
     def __init__(self, nodes):
@@ -91,23 +101,13 @@ class ProofState:
         self.assumptions = []
         self.formulas = []
         self.nextsStates = []
-        self.previousState = "nadap"
+        self.previousState = 'nadap'
 
 class Rule:
     def __init__(self, name, premises, conclusion):
         self.name = name
         self.premises = premises
         self.conclusion = conclusion
-
-def toText(F): #le metes formula F y devuelve como texto el arbol de F (por ej, devuelve ^(A,B) ).
-    if len(F.children) == 0:
-        r = F.symbol
-    else:
-        r = F.symbol + "("
-        for i in range(len(F.children)-1):
-            r += toText(F.children[i]) + ","
-        r += toText(F.children[-1]) + ")"
-    return r
 
 def feetea(f, a, S): #determina si se puede meter cosas adentro de f (en las variables que empiezan con caracter en S) para llegar a a.
     aAndpList(f, S)
@@ -122,7 +122,7 @@ def feeteaAux(f, a, S):
     if not f.symbol[0] in S:
         if not a.symbol[0] in S:
             if not f.symbol == a.symbol:
-                #print("casito 1")
+                #print('casito 1')
                 return False
             else:
                 for i in range(len(f.children)):
@@ -161,7 +161,7 @@ def feeteaAux(f, a, S):
                 else:
                     return feeteaAux(extension[f.symbol], extension[a.symbol])
 
-def aAndpList(f, S): #dada una formula f devuelve la lista de todas las variables que ocurren (? en f y empiezan con un caracter en S (generalmente S es ["a", "p"]).
+def aAndpList(f, S): #dada una formula f devuelve la lista de todas las variables que ocurren (? en f y empiezan con un caracter en S (generalmente S es ['a', 'p']).
     global extension
     extension = {}
     aAndpListAux(f, S)
@@ -185,7 +185,7 @@ def buildTheGraph(S):
             l = []
             buildTheGraphAux(extension[k][0], S)
             d[k].arrowsTo = l.copy()
-    print("d:", d)
+    print('d:', d)
     G = DGraph(d)
 
 def buildTheGraphAux(N, S):
@@ -194,22 +194,22 @@ def buildTheGraphAux(N, S):
     for ch in N.children:
         buildTheGraphAux(ch, S)
 
-f = Formula("^", [], "")
-f.children.append(Formula("A", [], ""))
-f.children.append(Formula("B", [], ""))
+f = Formula('^', [], '')
+f.children.append(Formula('A', [], ''))
+f.children.append(Formula('B', [], ''))
 f.updateText()
 
-f2 = Formula("->", [], "")
-f2.children.append(Formula("a0", [], ""))
-f2.children.append(Formula("a1", [], ""))
+f2 = Formula('->', [], '')
+f2.children.append(Formula('a0', [], ''))
+f2.children.append(Formula('a1', [], ''))
 f2.updateText()
 # print(f2.text)
 
-f3 = Formula("V", [], "")
-f3.children.append(Formula("^", [], ""))
-f3.children.append(Formula("a1", [], ""))
-f3.children[0].children.append(Formula("A", [], ""))
-f3.children[0].children.append(Formula("B", [], ""))
+f3 = Formula('V', [], '')
+f3.children.append(Formula('^', [], ''))
+f3.children.append(Formula('a1', [], ''))
+f3.children[0].children.append(Formula('A', [], ''))
+f3.children[0].children.append(Formula('B', [], ''))
 f3.updateText()
 
 ps = ProofState()
@@ -221,62 +221,62 @@ ps2.assumptions.append(f2)
 ps2.formulas.append(f2)
 ps2.previousState = ps
 
-t1= Formula("A1", [], "")
+t1= Formula('A1', [], '')
 t1.updateText()
 
-t2= Formula("A2", [], "")
+t2= Formula('A2', [], '')
 t1.updateText()
 
-t3 = Formula("", [], "^(A1,-->(A2,A3))")
+t3 = Formula('', [], '^(A1,-->(A2,A3))')
 t3.toTree()
 
-t4 = Formula("", [], "^(a1,-->(a2,a3))")
+t4 = Formula('', [], '^(a1,-->(a2,a3))')
 t4.toTree()
 
-t5 = Formula("", [], "^(p1,-->(p2,p3))")
+t5 = Formula('', [], '^(p1,-->(p2,p3))')
 t5.toTree()
 
-t6 = Formula("", [], "-->(V(p1,p2),-->(p2,p3))")
+t6 = Formula('', [], '-->(V(p1,p2),-->(p2,p3))')
 t6.toTree()
 
-t7 = Formula("", [], "-->(a1,-->(-->(A1,A2),a1))")
+t7 = Formula('', [], '-->(a1,-->(-->(A1,A2),a1))')
 t7.toTree()
 
-t8 = Formula("", [], "a1")
+t8 = Formula('', [], 'a1')
 t8.toTree()
 
-t9 = Formula("", [], "a2")
+t9 = Formula('', [], 'a2')
 t9.toTree()
 
-t10 = Formula("", [], "-->(a1,a2)")
+t10 = Formula('', [], '-->(a1,a2)')
 t10.toTree()
 
-t11 = Formula("", [], "-->(a2,a3)")
+t11 = Formula('', [], '-->(a2,a3)')
 t11.toTree()
 
-t12 = Formula("", [], "-->(a2,a1)")
+t12 = Formula('', [], '-->(a2,a1)')
 t12.toTree()
 
-t13 = Formula("", [], "-->(-->(a2,a1),-->(a4,a3))")
+t13 = Formula('', [], '-->(-->(a2,a1),-->(a4,a3))')
 t13.toTree()
 
-t14 = Formula("", [], "-->(-->(a4,a3),-->(a1,a2))")
+t14 = Formula('', [], '-->(-->(a4,a3),-->(a1,a2))')
 t14.toTree()
 
-t15 = Formula("", [], "-->(A2,A1)")
+t15 = Formula('', [], '-->(A2,A1)')
 t15.toTree()
 
-t16 = Formula("", [], "V(A2,A1)")
+t16 = Formula('', [], 'V(A2,A1)')
 t16.toTree()
 
-n1 = GraphNode("n1")
-n2 = GraphNode("n2")
-n3 = GraphNode("n3")
-n4 = GraphNode("n4")
+n1 = GraphNode('n1')
+n2 = GraphNode('n2')
+n3 = GraphNode('n3')
+n4 = GraphNode('n4')
 
 n1.arrowsTo.append(n2)
 n2.arrowsTo.append(n3)
 n3.arrowsTo.append(n4)
 
-gr = DGraph({"n1": n1,"n2": n2, "n3": n3, "n4": n4})
+gr = DGraph({'n1': n1,'n2': n2, 'n3': n3, 'n4': n4})
 print(gr.hasLoops())
