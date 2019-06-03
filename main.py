@@ -57,6 +57,10 @@ class Formula:
     
     def contains(self, l): #le metes una hoja (leaf) l (por ejemplo, "a1", "p3", o "A1") en forma de texto y te dice si el arbol contiene a esa hoja. Asume que el texto es igual al arbol.
         return l == self.text or l+')' in self.text or l+',' in self.text #para que no flashee a1 en a17.
+    
+    #TO-DO
+    def replace(self): #reemplaza todas las variables que sean key en extension por lo que hay en el ultimo elemento de esa lista de extension.
+        return self #(hacer bien)
 
 class GraphNode:
     def __init__(self, name):
@@ -123,7 +127,7 @@ class Problem:
         #agregar nocion de por que objetivos ya paso para que no loopee?
     
     def writeAdam(self):
-        self.PS[""] = ProofState([], [self.qvq], "eh?", "eh?", [], "", self.qvq)
+        self.PS[""] = ProofState([], [self.qvq], "eh?", "eh?", ["a1", "a2"], "", self.qvq)
         #enlistar metavariables
 
 class ProofState:
@@ -139,13 +143,14 @@ class ProofState:
         self.nextsStates = []
     
     def expand(self, i, infRule): #crea hijo de este ProofState que nace se aplicarle la regla de inferencia infRule a self.formulas[i]. La infRule NO puede ser la de asumir algo.
-        #separar en el caso de que infRule sea la regla distinta.
+        #separar en el caso de que infRule sea la regla distinta o que sea la regla de "si feetea en algun teorema listo"
         if i < len(self.formulas):
             #TO-DO: pensar como terminar de programar lo de varList en feetea para que tenga sentido lo siguiente.
-            if feetea(self.formulas[i], infRule.conclusion, ["a", "p"], self.metavariables):
-                self.nextsStates.append(ProofState(self.assumptions, self.formulas, self.name, [i, infRule], self.metavariables, self.name + "," + len(self.nextStates)))
+            if feetea(self.formulas[i], infRule.conclusion, ["a", "p"], self.metavariables, infRule):
+                self.nextsStates.append(ProofState(self.assumptions, self.formulas, self.name, [i, infRule], self.metavariables, self.name + "," + str(len(self.nextsStates)), self.problem))
+                
                 self.nextsStates[-1].formulas.pop(i)
-                #agregar las formulas nuevas
+                #agregar las formulas nuevas, o sea, habria que agregar p.replace() para cada p en premisas de infRule
                 #borrar metavariables que ya no estan y agregar las nuevas
                 #agregar al PS del Problem correspondiente el par (key de este):este
     
@@ -171,11 +176,19 @@ class Rule:
     def __init__(self, name, premises, conclusion):
         self.name = name
         self.premises = premises
+        for p in self.premises:
+            p.toTree()
         self.conclusion = conclusion
+        self.conclusion.toTree()
 
-def feetea(f, a, S, varList): #determina si se puede meter cosas adentro de f y de a (en las variables que empiezan con caracter en S) para que queden iguales. Por ejemplo, con s=["a"], feetean ^(a1,not(A1)) con ^(->(A2,A3),a2). varList es la lista de metavariables que ya aparecen en el ProofState en cuestión (está para que si se asignan metavariables no sean unas que ya estaban).
+def feetea(f, a, S, varList, infRule = False): #determina si se puede meter cosas adentro de f y de a (en las variables que empiezan con caracter en S) para que queden iguales. Por ejemplo, con s=["a"], feetean ^(a1,not(A1)) con ^(->(A2,A3),a2). varList es la lista de metavariables que ya aparecen en el ProofState en cuestión (está para que si se asignan metavariables no sean unas que ya estaban).
+    global newVars
+    newVars = []
     aAndpList(f, S)
     aAndpListAux(a, S)
+    if not infRule == False:
+        for prem in infRule.premises:
+            aAndpListAux(prem, S)
     if feeteaAux(f, a, S):
         buildTheGraph(S)
         if G.hasLoops():
@@ -267,8 +280,6 @@ def buildTheGraphAux(N, S):
         buildTheGraphAux(ch, S)
 
 def fillGaps(s, varList): #mira extension y los a los valores que tienen su lista vacia, le agregan una nueva a_i (o sea, una que no este en varList) (s es la letra que que quiero que se agregue con indices, en este caso 'a').
-    global newVars
-    newVars = []
     i = 1
     for k in extension:
         if len(extension[k]) == 0:
@@ -575,6 +586,11 @@ n5.arrowsTo.append(n1)
 
 gr = DGraph({'n1': n1,'n2': n2, 'n3': n3, 'n4': n4, 'n5': n5})
 
+
+
+r = Rule("r", [Formula('', [], "p1"), Formula('', [], "p2"), Formula('', [], "V(p3,p4)")], Formula('', [], "^(p1,p2)"))
+
+prob = Problem("^(V(a1,~(A1)),->(~(a2),A2))")
 
 
 symbols = ["!", "->", "-->", "^", "V", "<->", "A1", "A2", "a1", "a2", "a3", "a4", "p1", "p2", "p3"]
