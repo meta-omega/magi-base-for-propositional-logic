@@ -7,6 +7,8 @@ class Formula:
         self.symbol = symbol
         self.children = children
         self.text = text
+        
+        self.variables = []
     
     def __repr__(self):
         return self.text
@@ -69,6 +71,17 @@ class Formula:
             else:
                 for i in range(len(self.children)):
                     self.children[i].replaceAux()
+    
+    def listVariables(self, S): #le metés un conjunto de caracteres S y te devuelve la lista de todos los simbolos que aparecen en algún lugar del árbol que empiezan con caracter en S (y hace que self.variables sea esa lista).
+        self.variables = []
+        if self.symbol[0] in S:
+            self.variables.append(self.symbol)
+        else:
+            for ch in self.children:
+                self.variables += ch.listVariables(S)
+            self.variables = list(dict.fromkeys(self.variables)) #esto elimina las repetidas.
+        return self.variables
+                
 
 class GraphNode:
     def __init__(self, name):
@@ -126,16 +139,16 @@ class DGraph:
 
 class Problem:
     def __init__(self, qvq): #el qvq se pasa como texto.
+        self.name = qvq
         self.qvq = Formula("", [], qvq)
         self.qvq.toTree()
-        self.name = qvq
         self.PS = {} #diccionario que va a tener todos los PS que se van generando. Las key van a ser el recorrido (qué hijos) que hay que hacer desde el ProofState adam (llamamos adam a la raíz de un árbol) para llegar al en cuestion (onda "0-0-1-0-2-1-5"). EL adam tiene key = "".
         self.writeAdam()
         
         #agregar nocion de por que objetivos ya paso para que no loopee?
     
     def writeAdam(self):
-        self.PS[""] = ProofState([], [self.qvq], "eh?", "eh?", [], "", self.qvq)
+        self.PS[""] = ProofState([], [self.qvq], "eh?", "eh?", [], [], self)
         #enlistar metavariables
 
 class ProofState:
@@ -145,26 +158,43 @@ class ProofState:
         self.previousState = previousState #la key (del ProofState del que este vino) en el diccionario PS de la clase problem que corresponde.
         self.comesFrom = comesFrom #lista de dos elementos: el primero contiene el i de las formulas del ProofState anterior de la que vino, y el segundo contiene la regla de inferencia que se usó.
         self.metavariables = metavariables #contiene la lista de metavariables que aparecen en algún lado de este ProofState. Por ejemplo, ["a1", "a2", "a5"].
-        self.name = name #su key en el diccionario PS de la clase problem que corresponde.
+        self.findMetavariables(['a'])
+        self.name = name #lista de índices que hay que seguir en nextsStates desde el ProofState adam del Problem correspondiente para llegar a este ProofState. Si se lo pasa a texto con guiones entre números te da su key en el diccionario PS de la clase Problem que corresponde.
         self.problem = problem
         
         self.nextsStates = []
+    
+    
+    def findMetavariables(self, S): #hace que self.metavariables sea la lista de todas las metavariables (que empiezan con caracter en S) que hay en este ProofState, o sea, las que están en self.assumpions o en self.formulas. (Y devuelve esa lista).
+        self.metavariables = []
+        for assu in self.assumptions:
+            self.metavariables += assu.listVariables(S)
+        for form in self.formulas:
+            self.metavariables += form.listVariables(S)
+        self.metavariables = list(dict.fromkeys(self.metavariables)) #esto elimina las repetidas.
+        return self.metavariables
     
     def expand(self, i, infRule): #crea hijo de este ProofState que nace se aplicarle la regla de inferencia infRule a self.formulas[i].
         #separar en el caso de que infRule sea la regla distinta o que sea la regla de "si feetea en algun teorema listo"
         if i < len(self.formulas): #(esta linea vale la pena o mejor asumir que el i del imput esta en el rango correcto?)
             #TO-DO: pensar como terminar de programar lo de varList en feetea para que tenga sentido lo siguiente.
             if feetea(self.formulas[i], infRule.conclusion, ["a", "p"], self.metavariables, infRule):
-                self.nextsStates.append(ProofState(self.assumptions, copy.deepcopy(self.formulas), self.name, [i, infRule], self.metavariables, self.name + "-" + str(len(self.nextsStates)), self.problem))
+                self.nextsStates.append(ProofState(self.assumptions, copy.deepcopy(self.formulas), self.name, [i, infRule], self.metavariables, self.name + [len(self.nextsStates)], self.problem))
                 
                 self.nextsStates[-1].formulas.pop(i)
                 #(como hay que hacer si ya aparecen las formulas que toy por agregar? Me encargo despues desde el problem)
                 for pre in infRule.premises:
-                    self.nextsStates[-1].formulas.append(pre)
+                    self.nextsStates[-1].formulas.append(copy.deepcopy(pre))
                     self.nextsStates[-1].formulas[-1].replace()
-                #agregar las formulas nuevas, o sea, habria que agregar p.replace() para cada p en premisas de infRule
-                #borrar metavariables que ya no estan y agregar las nuevas
+                self.nextsStates[-1].findMetavariables(['a'])
+                self.nextsStates[-1].problem.PS[self.nextsStates[-1].toKey()] = self #me deja vacia la lista, seguir desde aca.
                 #agregar al PS del Problem correspondiente el par (key de este):este
+    
+    def toKey(self):
+        k = ''
+        for i in self.name:
+            k += str(i) + '-'
+        return k
     
     def show(self):
         print("----------------------------")
@@ -181,7 +211,7 @@ class ProofState:
         print("--------- thats it ----------")
     
     def __repr__(self):
-        return self.name + "."
+        return str(self.name)
         
 
 class Rule:
