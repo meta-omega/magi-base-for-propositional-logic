@@ -58,9 +58,17 @@ class Formula:
     def contains(self, l): #le metes una hoja (leaf) l (por ejemplo, "a1", "p3", o "A1") en forma de texto y te dice si el arbol contiene a esa hoja. Asume que el texto es igual al arbol.
         return l == self.text or l+')' in self.text or l+',' in self.text #para que no flashee a1 en a17.
     
-    #TO-DO
     def replace(self): #reemplaza todas las variables que sean key en extension por lo que hay en el ultimo elemento de esa lista de extension.
-        return self #(hacer bien)
+        self.replaceAux()
+        self.updateText()
+    
+    def replaceAux(self):
+            if self.symbol in extension:
+                self.text = extension[self.symbol][-1].text
+                self.toTree()
+            else:
+                for i in range(len(self.children)):
+                    self.children[i].replaceAux()
 
 class GraphNode:
     def __init__(self, name):
@@ -121,13 +129,13 @@ class Problem:
         self.qvq = Formula("", [], qvq)
         self.qvq.toTree()
         self.name = qvq
-        self.PS = {} #diccionario que va a tener todos los PS que se van generando. Las key van a ser el recorrido (qué hijos) que hay que hacer desde el ProofState adam (llamamos adam a la raíz de un árbol) para llegar al en cuestion (onda "0,0,1,0,2,1,5"). EL adam tiene key = "".
+        self.PS = {} #diccionario que va a tener todos los PS que se van generando. Las key van a ser el recorrido (qué hijos) que hay que hacer desde el ProofState adam (llamamos adam a la raíz de un árbol) para llegar al en cuestion (onda "0-0-1-0-2-1-5"). EL adam tiene key = "".
         self.writeAdam()
         
         #agregar nocion de por que objetivos ya paso para que no loopee?
     
     def writeAdam(self):
-        self.PS[""] = ProofState([], [self.qvq], "eh?", "eh?", ["a1", "a2"], "", self.qvq)
+        self.PS[""] = ProofState([], [self.qvq], "eh?", "eh?", [], "", self.qvq)
         #enlistar metavariables
 
 class ProofState:
@@ -142,14 +150,18 @@ class ProofState:
         
         self.nextsStates = []
     
-    def expand(self, i, infRule): #crea hijo de este ProofState que nace se aplicarle la regla de inferencia infRule a self.formulas[i]. La infRule NO puede ser la de asumir algo.
+    def expand(self, i, infRule): #crea hijo de este ProofState que nace se aplicarle la regla de inferencia infRule a self.formulas[i].
         #separar en el caso de que infRule sea la regla distinta o que sea la regla de "si feetea en algun teorema listo"
-        if i < len(self.formulas):
+        if i < len(self.formulas): #(esta linea vale la pena o mejor asumir que el i del imput esta en el rango correcto?)
             #TO-DO: pensar como terminar de programar lo de varList en feetea para que tenga sentido lo siguiente.
             if feetea(self.formulas[i], infRule.conclusion, ["a", "p"], self.metavariables, infRule):
-                self.nextsStates.append(ProofState(self.assumptions, self.formulas, self.name, [i, infRule], self.metavariables, self.name + "," + str(len(self.nextsStates)), self.problem))
+                self.nextsStates.append(ProofState(self.assumptions, copy.deepcopy(self.formulas), self.name, [i, infRule], self.metavariables, self.name + "-" + str(len(self.nextsStates)), self.problem))
                 
                 self.nextsStates[-1].formulas.pop(i)
+                #(como hay que hacer si ya aparecen las formulas que toy por agregar? Me encargo despues desde el problem)
+                for pre in infRule.premises:
+                    self.nextsStates[-1].formulas.append(pre)
+                    self.nextsStates[-1].formulas[-1].replace()
                 #agregar las formulas nuevas, o sea, habria que agregar p.replace() para cada p en premisas de infRule
                 #borrar metavariables que ya no estan y agregar las nuevas
                 #agregar al PS del Problem correspondiente el par (key de este):este
@@ -158,7 +170,7 @@ class ProofState:
         print("----------------------------")
         print("this ProofState is:", self.name, ".")
         print("assumptions:", self.assumptions)
-        print("formulas:", self.assumptions)
+        print("formulas:", self.formulas)
         print("previousState:", self.previousState, ".")
         print("comesFrom:", self.comesFrom)
         print("metavariables:", self.metavariables)
@@ -588,9 +600,10 @@ gr = DGraph({'n1': n1,'n2': n2, 'n3': n3, 'n4': n4, 'n5': n5})
 
 
 
-r = Rule("r", [Formula('', [], "p1"), Formula('', [], "p2"), Formula('', [], "V(p3,p4)")], Formula('', [], "^(p1,p2)"))
+r1 = Rule("r", [Formula('', [], "p1"), Formula('', [], "p2"), Formula('', [], "V(p3,p4)"), Formula('', [], "^(p5,p6)")], Formula('', [], "^(p1,p2)"))
+r2 = Rule("r", [Formula('', [], "p1")], Formula('', [], "V(p1,p2)"))
 
-prob = Problem("^(V(a1,~(A1)),->(~(a2),A2))")
+prob = Problem("^(V(A1,~(A1)),->(~(A2),A2))")
 
 
 symbols = ["!", "->", "-->", "^", "V", "<->", "A1", "A2", "a1", "a2", "a3", "a4", "p1", "p2", "p3"]
