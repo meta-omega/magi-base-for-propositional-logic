@@ -72,7 +72,7 @@ class Formula:
                 for i in range(len(self.children)):
                     self.children[i].replaceAux()
     
-    def listVariables(self, S): #le metés un conjunto de caracteres S y te devuelve la lista de todos los simbolos que aparecen en algún lugar del árbol que empiezan con caracter en S (y hace que self.variables sea esa lista).
+    def listVariables(self, S): #le metés una lista de caracteres S y te devuelve la lista de todos los simbolos que aparecen en algún lugar del árbol que empiezan con caracter en S (y hace que self.variables sea esa lista).
         self.variables = []
         if self.symbol[0] in S:
             self.variables.append(self.symbol)
@@ -142,7 +142,7 @@ class Problem:
         self.name = qvq
         self.qvq = Formula("", [], qvq)
         self.qvq.toTree()
-        self.PS = {} #diccionario que va a tener todos los PS que se van generando. Las key van a ser el recorrido (qué hijos) que hay que hacer desde el ProofState adam (llamamos adam a la raíz de un árbol) para llegar al en cuestion (onda "0-0-1-0-2-1-5"). EL adam tiene key = "".
+        self.PS = {} #diccionario que va a tener todos los PS que se van generando. Las key van a ser el recorrido (qué hijos) que hay que hacer desde el ProofState adam (llamamos adam a la raíz de un árbol) para llegar al en cuestion (onda "0-0-1-0-2-1-5-"). EL adam tiene key = "".
         self.writeAdam()
         
         #agregar nocion de por que objetivos ya paso para que no loopee?
@@ -174,12 +174,12 @@ class ProofState:
         self.metavariables = list(dict.fromkeys(self.metavariables)) #esto elimina las repetidas.
         return self.metavariables
     
-    def expand(self, i, infRule): #crea hijo de este ProofState que nace se aplicarle la regla de inferencia infRule a self.formulas[i].
+    def expand(self, i, infRule): #crea hijo de este ProofState que nace al aplicarle la regla de inferencia infRule a self.formulas[i].
         #separar en el caso de que infRule sea la regla distinta o que sea la regla de "si feetea en algun teorema listo"
         if i < len(self.formulas): #(esta linea vale la pena o mejor asumir que el i del imput esta en el rango correcto?)
             #TO-DO: pensar como terminar de programar lo de varList en feetea para que tenga sentido lo siguiente.
             if feetea(self.formulas[i], infRule.conclusion, ["a", "p"], self.metavariables, infRule):
-                self.nextsStates.append(ProofState(self.assumptions, copy.deepcopy(self.formulas), self.name, [i, infRule], self.metavariables, self.name + [len(self.nextsStates)], self.problem))
+                self.nextsStates.append(ProofState(copy.deepcopy(self.assumptions), copy.deepcopy(self.formulas), self.name, [i, infRule], copy.deepcopy(self.metavariables), self.name + [len(self.nextsStates)], self.problem))
                 
                 self.nextsStates[-1].formulas.pop(i)
                 #(como hay que hacer si ya aparecen las formulas que toy por agregar? Me encargo despues desde el problem)
@@ -187,7 +187,7 @@ class ProofState:
                     self.nextsStates[-1].formulas.append(copy.deepcopy(pre))
                     self.nextsStates[-1].formulas[-1].replace()
                 self.nextsStates[-1].findMetavariables(['a'])
-                self.nextsStates[-1].problem.PS[self.nextsStates[-1].toKey()] = self #me deja vacia la lista, seguir desde aca.
+                self.nextsStates[-1].problem.PS[self.nextsStates[-1].toKey()] = self.nextsStates[-1]
                 #agregar al PS del Problem correspondiente el par (key de este):este
     
     def toKey(self):
