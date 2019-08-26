@@ -4,11 +4,11 @@ import random
 
 class Formula:
     def __init__(self, symbol, children, text):
-        self.symbol = symbol
-        self.children = children
-        self.text = text
+        self.symbol = symbol #string
+        self.children = children #lista de Formulas
+        self.text = text #string
         
-        self.variables = []
+        self.variables = [] #lista de strings
     
     def __repr__(self):
         return self.text
@@ -16,7 +16,7 @@ class Formula:
     def updateText(self):
         self.text = self.toText()
 
-    def toText(self): #mira el arbol y devuelve el texto que representa.
+    def toText(self): #mira el arbol y el simbolo y devuelve el texto que representa.
         if len(self.children) == 0:
             r = self.symbol
         else:
@@ -26,7 +26,7 @@ class Formula:
             r += self.children[-1].toText() + ')'
         return r
 
-    def toTree(self): #mira el texto y arma el árbol.
+    def toTree(self): #mira el texto y arma el árbol y el simbolo.
         self.children.clear()
         self.symbol = ''
         if len(self.text) > 0:
@@ -36,7 +36,7 @@ class Formula:
             if i == len(self.text):
                 self.symbol = self.text
             else:
-                self.symbol = self.text[:i]
+                self.symbol = self.text[:i] #o sea, ese texto pero solo los carecteres desde 0 hasta i-1 inclusives.
                 while i < len(self.text) - 1:
                     m = i + 1
                     i = m
@@ -58,7 +58,7 @@ class Formula:
                     self.children[-1].toTree()
     
     def contains(self, l): #le metes una hoja (leaf) l (por ejemplo, "a1", "p3", o "A1") en forma de texto y te dice si el arbol contiene a esa hoja. Asume que el texto es igual al arbol.
-        return l == self.text or l+')' in self.text or l+',' in self.text #para que no flashee a1 en a17.
+        return l == self.text or '('+l+')' in self.text or '('+l+',' in self.text or ','+l+',' in self.text or ','+l+')' in self.text #para que no flashee a1 en a17, ni b1 en ab1.
     
     def replace(self): #reemplaza todas las variables que sean key en extension por lo que hay en el ultimo elemento de esa lista de extension.
         self.replaceAux()
@@ -72,7 +72,7 @@ class Formula:
                 for i in range(len(self.children)):
                     self.children[i].replaceAux()
     
-    def listVariables(self, S): #le metés una lista de caracteres S y te devuelve la lista de todos los simbolos que aparecen en algún lugar del árbol que empiezan con caracter en S (y hace que self.variables sea esa lista).
+    def listVariables(self, S): #le metés una lista de caracteres S y te devuelve la lista de todos los simbolos que aparecen en algún lugar del árbol que empiezan con caracter en S (y hace que self.variables sea esa lista). OJO: si sos medie salame y tenes una variable y un operador que empiezan con el mismo caracter (onda la variable '-a1' y el operador '->') puede flashear.
         self.variables = []
         if self.symbol[0] in S:
             self.variables.append(self.symbol)
@@ -85,11 +85,11 @@ class Formula:
 
 class GraphNode:
     def __init__(self, name):
-        self.name = name
+        self.name = name #string
         self.arrowsTo = [] # lista de GraphNode a los que apunta.
         self.arrowsFrom = [] # lista de GraphNode que apuntan a este.
 
-class DGraph:
+class DGraph: #(grafo direccionado)
     def __init__(self, nodes): #nodes es un diccionario que las key son los name de los GraphNode y en ese lugar contiene a ese GraphNode.
         self.nodes = nodes
         self.isOrphan = {}
@@ -104,7 +104,7 @@ class DGraph:
             for ar in self.nodes[k].arrowsTo:
                 self.isOrphan[ar.name] = False
     
-    def buildArrowsFrom(self):
+    def buildArrowsFrom(self): #arma arrowsFrom.
         for k in self.nodes:
             for ar in self.nodes[k].arrowsTo:
                 self.nodes[ar.name].arrowsFrom.append(self.nodes[k])
@@ -142,7 +142,7 @@ class Problem:
         self.name = qvq
         self.qvq = Formula("", [], qvq)
         self.qvq.toTree()
-        self.PS = {} #diccionario que va a tener todos los PS que se van generando. Las key van a ser el recorrido (qué hijos) que hay que hacer desde el ProofState adam (llamamos adam a la raíz de un árbol) para llegar al en cuestion (onda "0-0-1-0-2-1-5-"). EL adam tiene key = "".
+        self.PS = {} #diccionario que va a tener todos los PS (proof states) que se van generando. Las key van a ser el recorrido (qué hijos) que hay que hacer desde el ProofState adam (llamamos adam a la raíz de un árbol) para llegar al en cuestion (onda "0-0-1-0-2-1-5-"). EL adam tiene key = "".
         self.writeAdam()
         
         #agregar nocion de por que objetivos ya paso para que no loopee?
@@ -153,16 +153,16 @@ class Problem:
 
 class ProofState:
     def __init__(self, assumptions, formulas, previousState, comesFrom, metavariables, name, problem): #el previousState tiene que ser "eh?" si no tiene ProofStates anteriores, o sea si es el adam.
-        self.assumptions = assumptions
-        self.formulas = formulas
-        self.previousState = previousState #la key (del ProofState del que este vino) en el diccionario PS de la clase problem que corresponde.
+        self.assumptions = assumptions #lista de cosas asumidas.
+        self.formulas = formulas #lista de las formulas que hay que probar.
+        self.previousState = previousState #el name (del ProofState del que este vino). Si es el adam es un string en lugar de una lista, es "eh?"
         self.comesFrom = comesFrom #lista de dos elementos: el primero contiene el i de las formulas del ProofState anterior de la que vino, y el segundo contiene la regla de inferencia que se usó.
         self.metavariables = metavariables #contiene la lista de metavariables que aparecen en algún lado de este ProofState. Por ejemplo, ["a1", "a2", "a5"].
         self.findMetavariables(['a'])
-        self.name = name #lista de índices que hay que seguir en nextsStates desde el ProofState adam del Problem correspondiente para llegar a este ProofState. Si se lo pasa a texto con guiones entre números te da su key en el diccionario PS de la clase Problem que corresponde.
+        self.name = name #lista de índices que hay que seguir en nextsStates desde el ProofState adam del Problem correspondiente para llegar a este ProofState. Si se lo pasa a texto con guiones entre números (y uno al final) te da su key en el diccionario PS de la clase Problem que corresponde.
         self.problem = problem
         
-        self.nextsStates = []
+        self.nextsStates = [] #lista de posibles proximos PS.
     
     
     def findMetavariables(self, S): #hace que self.metavariables sea la lista de todas las metavariables (que empiezan con caracter en S) que hay en este ProofState, o sea, las que están en self.assumpions o en self.formulas. (Y devuelve esa lista).
@@ -190,7 +190,7 @@ class ProofState:
                 self.nextsStates[-1].problem.PS[self.nextsStates[-1].toKey()] = self.nextsStates[-1]
                 #agregar al PS del Problem correspondiente el par (key de este):este
     
-    def toKey(self):
+    def toKey(self): #devuelve el string correspondiente al name.
         k = ''
         for i in self.name:
             k += str(i) + '-'
@@ -357,7 +357,7 @@ def chewAux(f): #cuando extension tiene exactamente un elemento por lista, esta 
     f.updateText()
     return f
 
-#LE FALTA ASIGNAR NUEVAS a_i.
+#LE FALTA ASIGNAR NUEVAS a_i. (o ya se lo puse?)
 def chewForLoops(s, varList): #es igual a chew, solo que esta se usa cuando el grafo tiene loops. Va controlando que si hay un loop no se agrande, o sea, que todos los loops sean de la forma "la metavariable k llego a tener que ser reemplazada por la variable k". (Y no por ejemplo que a1 sea reemplazado por ->(a1,(algo))). Ah, y ademas esta devuelve algo (True o False). s dice cual es la metavariable que tiene que usar para reemplazar los huecos (generalmente "a").   
     numFinished = 0
     global finalReplacing
@@ -632,6 +632,9 @@ gr = DGraph({'n1': n1,'n2': n2, 'n3': n3, 'n4': n4, 'n5': n5})
 
 r1 = Rule("r", [Formula('', [], "p1"), Formula('', [], "p2"), Formula('', [], "V(p3,p4)"), Formula('', [], "^(p5,p6)")], Formula('', [], "^(p1,p2)"))
 r2 = Rule("r", [Formula('', [], "p1")], Formula('', [], "V(p1,p2)"))
+
+#infRules = []
+#infRules.append(Rule('Neation introduction', [Formula('', [], "->(p1,p2)"), Formula()]))
 
 prob = Problem("^(V(A1,~(A1)),->(~(A2),A2))")
 
