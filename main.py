@@ -687,3 +687,75 @@ def testearFeetea(N):
         else:
             no += 1
     print(se, "se ("+str(siBien), "bien y", siMal, "mal), ", no, "no")
+
+
+Theorems = ["^(->(A1,A2),A1)"]
+Aindex = [] #lista de indices de las cosas que son asumidas.
+
+#https://en.wikipedia.org/wiki/Propositional_calculus#Example_2._Natural_deduction_system
+
+InfRules = {}
+InfRules["Negation introduction"] = Rule("Negation introduction", [Formula('', [], "->(p1,p2)"), Formula('', [], "->(p1,~(p2))")], Formula('', [], "~(p1)"))
+InfRules["Negation elimination"] = Rule("Negation elimination", [Formula('', [], "~(p1)")], Formula('', [], "->(p1,p2)"))
+InfRules["Double negation elimination"] = Rule("Double negation elimination", [Formula('', [], "~(~(p1))")], Formula('', [], "p1"))
+InfRules["Conjunction introduction"] = Rule("Conjunction introduction", [Formula('', [], "p1"), Formula('', [], "p2")], Formula('', [], "^(p1,p2)"))
+InfRules["Conjunction elimination izq"] = Rule("Conjunction elimination izq", [Formula('', [], "^(p1,p2)")], Formula('', [], "p1"))
+InfRules["Conjunction elimination der"] = Rule("Conjunction elimination der", [Formula('', [], "^(p1,p2)")], Formula('', [], "p2"))
+InfRules["Disjunction introduction izq"] = Rule("Disjunction introduction izq", [Formula('', [], "p1")], Formula('', [], "V(p1,p2)"))
+InfRules["Disjunction introduction der"] = Rule("Disjunction introduction der", [Formula('', [], "p2")], Formula('', [], "V(p1,p2)"))
+InfRules["Disjunction elimination"] = Rule("Disjunction elimination", [Formula('', [], "V(p1,p2)"), Formula('', [], "->(p1,p3)"), Formula('', [], "->(p2,p3)")], Formula('', [], "p3"))
+InfRules["Biconditional introduction"] = Rule("Biconditional introduction", [Formula('', [], "->(p1,p2)"), Formula('', [], "->(p2,p1)")], Formula('', [], "<->(p2,p1)"))
+InfRules["Biconditional elimination ->"] = Rule("Biconditional elimination ->", [Formula('', [], "<->(p1,p2)")], Formula('', [], "->(p1,p2)"))
+InfRules["Biconditional elimination <-"] = Rule("Biconditional elimination <-", [Formula('', [], "<->(p1,p2)")], Formula('', [], "->(p2,p1)"))
+InfRules["Modus ponens"] = Rule("Modus ponens", [Formula('', [], "p1"), Formula('', [], "->(p1,p2)")], Formula('', [], "p2"))
+
+
+
+
+
+def goForward(r, ind):
+    if len(ind) == len(r.premises):
+        x1=".("
+        x2=".("
+        for i in range(len(ind)-1):
+            x1 += r.premises[i].text + ","
+            x2 += Theorems[ind[i]] + ","
+        x1 += r.premises[-1].text + ")"
+        x2 += Theorems[ind[-1]] + ")"
+        x1 = Formula('', [], x1)
+        x1.toTree()
+        x2 = Formula('', [], x2)
+        x2.toTree()
+        if feetea(x1, x2, ['p'], []):
+            #print('feetearon')
+            a = copy.deepcopy(r.conclusion)
+            print("a es ", a)
+            print("a tiene las variables ", a.variables)
+            a = copy.deepcopy(reemplazar(a))
+            a.listVariables(['p'])
+            print(a)
+            print(a.variables)
+            for m in a.variables:
+                texto = "Que queres que sea " + m + "?"
+                extension[m] = [Formula('', [], input(texto))]
+                extension[m][0].toTree()
+            a = copy.deepcopy(reemplazar(a))
+            Theorems.append(a.text)
+                
+        else:
+            print("No feetean corazon")
+    else:
+        print("salame nececitas meter", len(r.premises), "teoremas")
+
+def goForwardCP(assum): #(Conditional proof, la ultima regla, la distinta)
+    Aindex.append(len(Theorems))
+    Theorems.append(assum)
+
+def closeLastAssumption(i):
+    Theorems[Aindex[-1]] = "->(" + Theorems[Aindex[-1]] + "," + Theorems[i] + ")"
+    for j in range(Aindex[-1]+1, len(Theorems)):
+        Theorems.pop()
+    Aindex.pop()
+
+#name = [input("Enter a name:), 4]
+#print(name)
