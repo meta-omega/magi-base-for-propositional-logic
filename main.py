@@ -689,8 +689,8 @@ def testearFeetea(N):
     print(se, "se ("+str(siBien), "bien y", siMal, "mal), ", no, "no")
 
 
-Theorems = ["^(->(A1,A2),A1)"]
-Aindex = [] #lista de indices de las cosas que son asumidas.
+Theorems = ["^(->(A1,A2),A1)"] #lista de strings
+Aindex = [] #lista de indices de las cosas de Theorems que son asumidas.
 
 #https://en.wikipedia.org/wiki/Propositional_calculus#Example_2._Natural_deduction_system
 
@@ -713,7 +713,7 @@ InfRules["Modus ponens"] = Rule("Modus ponens", [Formula('', [], "p1"), Formula(
 
 
 
-def goForward(r, ind):
+def goForward(r, ind): #le metes una Rule (r) y una lista de indices (ind) y se fija si los Theorems con indice en ind feetean, en ese orden, con las premisas de r. Si si, agrega la conclusion de r a Theorems, reemplazando las metavariables por lo que terminan teniendo en el feeteo. Si quedan metavariables en la conclusion sin reemplazar (por ejemplo en Negation elimination) le pregunta al usuarie que le quiere meter.
     if len(ind) == len(r.premises):
         x1=".("
         x2=".("
@@ -727,14 +727,9 @@ def goForward(r, ind):
         x2 = Formula('', [], x2)
         x2.toTree()
         if feetea(x1, x2, ['p'], []):
-            #print('feetearon')
             a = copy.deepcopy(r.conclusion)
-            print("a es ", a)
-            print("a tiene las variables ", a.variables)
             a = copy.deepcopy(reemplazar(a))
             a.listVariables(['p'])
-            print(a)
-            print(a.variables)
             for m in a.variables:
                 texto = "Que queres que sea " + m + "?"
                 extension[m] = [Formula('', [], input(texto))]
@@ -756,6 +751,3 @@ def closeLastAssumption(i):
     for j in range(Aindex[-1]+1, len(Theorems)):
         Theorems.pop()
     Aindex.pop()
-
-#name = [input("Enter a name:), 4]
-#print(name)
