@@ -138,26 +138,35 @@ class DGraph: #(grafo direccionado)
         return not len(visited) == len(self.nodes)
 
 class Problem:
-    def __init__(self, qvq): #el qvq se pasa como texto.
+    def __init__(self, qvq): #el qvq se pasa como lista de textos, no puede tener formulas repetidas (porque van a ser keys de algo).
         self.name = qvq
-        self.qvq = Formula("", [], qvq)
-        self.qvq.toTree()
+        for i in range(len(self.name)):
+            self.name[i] = Formula("", [], self.name[i])
+            self.name[i].toTree()
         self.PS = {} #diccionario que va a tener todos los PS (proof states) que se van generando. Las key van a ser el recorrido (qué hijos) que hay que hacer desde el ProofState adam (llamamos adam a la raíz de un árbol) para llegar al en cuestion (onda "0-0-1-0-2-1-5-"). EL adam tiene key = "".
         self.writeAdam()
         
+        self.truths = {} #diccionario que va a tener como keys los nombres de las ramas de un arbol (formado por GraphNodes) y te va a mandar a una lista de teoremas o cosas asumidas.
+        self.adam = GraphNode('')
+        self.truths[''] = [] #esto hay que hacer que empiece siendo la lista de todos los teoremas que ya se conocen. Misma notacion que en el diccionario de PS.
         #agregar nocion de por que objetivos ya paso para que no loopee?
     
     def writeAdam(self):
-        self.PS[""] = ProofState([], [self.qvq], "eh?", "eh?", [], [], self)
-        #enlistar metavariables
+        d = {}
+        for i in range(len(self.name)):
+            d[self.name[i].text] = ""
+        self.PS[""] = ProofState(d, self.name, "eh?", "eh?", [], [], self)
+        self.PS[""].findMetavariables('a')
 
+#TO-DO: que cada proofstate este en orden alfabetico? (para facilidad de leer).
 class ProofState:
-    def __init__(self, assumptions, formulas, previousState, comesFrom, metavariables, name, problem): #el previousState tiene que ser "eh?" si no tiene ProofStates anteriores, o sea si es el adam.
-        self.assumptions = assumptions #lista de cosas asumidas.
+    def __init__(self, truthDic, formulas, previousState, comesFrom, metavariables, name, problem): #el previousState tiene que ser "eh?" si no tiene ProofStates anteriores, o sea si es el adam. (TO-DO: volar assumptions e introducir truthDic. idem en writeAdam (en problem) y en expand).
+        #self.assumptions = assumptions #lista de cosas asumidas. #(Esta vuela)
         self.formulas = formulas #lista de las formulas que hay que probar.
+        self.truthDic = truthDic #va a tener como keys los textos de los elementos de formulas (TO-DO: asegurarme de que formulas no tenga elementos repetidos) y te manda a una key del truths del problem correspondiente.
         self.previousState = previousState #el name (del ProofState del que este vino). Si es el adam es un string en lugar de una lista, es "eh?"
-        self.comesFrom = comesFrom #lista de dos elementos: el primero contiene el i de las formulas del ProofState anterior de la que vino, y el segundo contiene la regla de inferencia que se usó.
-        self.metavariables = metavariables #contiene la lista de metavariables que aparecen en algún lado de este ProofState. Por ejemplo, ["a1", "a2", "a5"].
+        self.comesFrom = comesFrom #lista de dos elementos: el primero contiene el i de las formulas del ProofState anterior de la que vino, y el segundo contiene la regla de inferencia que se usó. Si este es el adam vale "eh?"
+        self.metavariables = metavariables #contiene la lista de metavariables que aparecen en algún lado de este ProofState. Por ejemplo, ["a1", "a2", "a5"]. (TO-DO: que incluya a las que estan solo en el truths del Problem pero que tienen que ver con este PS).
         self.findMetavariables(['a'])
         self.name = name #lista de índices que hay que seguir en nextsStates desde el ProofState adam del Problem correspondiente para llegar a este ProofState. Si se lo pasa a texto con guiones entre números (y uno al final) te da su key en el diccionario PS de la clase Problem que corresponde.
         self.problem = problem
@@ -165,30 +174,52 @@ class ProofState:
         self.nextsStates = [] #lista de posibles proximos PS.
     
     
-    def findMetavariables(self, S): #hace que self.metavariables sea la lista de todas las metavariables (que empiezan con caracter en S) que hay en este ProofState, o sea, las que están en self.assumpions o en self.formulas. (Y devuelve esa lista).
+    def findMetavariables(self, S): #hace que self.metavariables sea la lista de todas las metavariables (que empiezan con caracter en S) que hay en este ProofState, o sea, las que están en self.assumpions o en self.formulas. (Y devuelve esa lista). (TO-DO: que en vez de en assumtions las busque en el truths del Problem).
         self.metavariables = []
-        for assu in self.assumptions:
-            self.metavariables += assu.listVariables(S)
+        #for assu in self.assumptions:
+            #self.metavariables += assu.listVariables(S)
         for form in self.formulas:
             self.metavariables += form.listVariables(S)
         self.metavariables = list(dict.fromkeys(self.metavariables)) #esto elimina las repetidas.
         return self.metavariables
     
-    def expand(self, i, infRule): #crea hijo de este ProofState que nace al aplicarle la regla de inferencia infRule a self.formulas[i].
-        #separar en el caso de que infRule sea la regla distinta o que sea la regla de "si feetea en algun teorema listo"
+    
+    def expand(self, i, infRule): #crea hijo de este ProofState que nace al aplicarle la regla de inferencia infRule a self.formulas[i]. TO-DO: que no pueda expandir dos veces con lo mismo (al pedo).
+        #separar en el caso de que infRule sea la regla distinta o que sea la regla de "si feetea en algun teorema listo". TO-DO: en ambos casos modificar truthDic como corresponda.
         if i < len(self.formulas): #(esta linea vale la pena o mejor asumir que el i del imput esta en el rango correcto?)
-            #TO-DO: pensar como terminar de programar lo de varList en feetea para que tenga sentido lo siguiente.
+            #TO-DO: pensar como terminar de programar lo de varList en feetea para que tenga sentido lo siguiente. (creo que ya ta).
             if feetea(self.formulas[i], infRule.conclusion, ["a", "p"], self.metavariables, infRule):
-                self.nextsStates.append(ProofState(copy.deepcopy(self.assumptions), copy.deepcopy(self.formulas), self.name, [i, infRule], copy.deepcopy(self.metavariables), self.name + [len(self.nextsStates)], self.problem))
+                self.nextsStates.append(ProofState(copy.deepcopy(self.truthDic), copy.deepcopy(self.formulas), self.name, [i, infRule], copy.deepcopy(self.metavariables), self.name + [len(self.nextsStates)], self.problem))
                 
+                k = self.nextsStates[-1].truthDic[self.nextsStates[-1].formulas[i].text]
+                self.nextsStates[-1].truthDic.pop(self.nextsStates[-1].formulas[i].text)
                 self.nextsStates[-1].formulas.pop(i)
                 #(como hay que hacer si ya aparecen las formulas que toy por agregar? Me encargo despues desde el problem)
                 for pre in infRule.premises:
                     self.nextsStates[-1].formulas.append(copy.deepcopy(pre))
                     self.nextsStates[-1].formulas[-1].replace()
+                    self.nextsStates[-1].truthDic[self.nextsStates[-1].formulas[-1].text] = k
                 self.nextsStates[-1].findMetavariables(['a'])
                 self.nextsStates[-1].problem.PS[self.nextsStates[-1].toKey()] = self.nextsStates[-1]
-                #agregar al PS del Problem correspondiente el par (key de este):este
+                #agregar al PS del Problem correspondiente el par (key de este):este (creo que esto es la linea anterior)
+
+    def expandCP(self, i): #crea hijo de este ProofState que nace al aplicarle la conditional proof a self.formulas[i], donde esa ultima tiene que ser de la forma ->(_,_) (una implicacion), o sea, esto arma un ProofState que es igual a este pero en vez de tener que probar P->Q hay que probar Q, asumiendo P.
+        if i < len(self.formulas):
+            if self.formulas[i].symbol == '->':
+                self.nextsStates.append(ProofState(copy.deepcopy(self.truthDic), copy.deepcopy(self.formulas), self.name, [i, 'CP'], copy.deepcopy(self.metavariables), self.name + [len(self.nextsStates)], self.problem))
+                
+                
+                k = self.nextsStates[-1].truthDic[self.formulas[i].text]
+                #
+                P = self.formulas[i].children[0]
+                Q = self.formulas[i].children[0]
+                #actualizar truthDic:
+                #self.problem.
+                
+                #actualiza formulas:
+                self.nextsStates[-1].formulas[i] = Q
+                #
+    
     
     def toKey(self): #devuelve el string correspondiente al name.
         k = ''
@@ -199,7 +230,7 @@ class ProofState:
     def show(self):
         print("----------------------------")
         print("this ProofState is:", self.name, ".")
-        print("assumptions:", self.assumptions)
+        print("truthDic:", self.truthDic)
         print("formulas:", self.formulas)
         print("previousState:", self.previousState, ".")
         print("comesFrom:", self.comesFrom)
@@ -222,6 +253,9 @@ class Rule:
             p.toTree()
         self.conclusion = conclusion
         self.conclusion.toTree()
+    
+    def __repr__(self):
+        return self.name
 
 def feetea(f, a, S, varList, infRule = False): #determina si se puede meter cosas adentro de f y de a (en las variables que empiezan con caracter en S) para que queden iguales. Por ejemplo, con s=["a"], feetean ^(a1,not(A1)) con ^(->(A2,A3),a2). varList es la lista de metavariables que ya aparecen en el ProofState en cuestión (está para que si se asignan metavariables no sean unas que ya estaban).
     global newVars
@@ -325,11 +359,14 @@ def fillGaps(s, varList): #mira extension y los a los valores que tienen su list
     i = 1
     for k in extension:
         if len(extension[k]) == 0:
-            while s+str(i) in varList or s+str(i) in extension: #esta condicion hay que pensarla bien cuando llamemos a esta funcion con las variables de los proofStates. El or lo puse para poder mientras ir probandola (la llamo con varList siendo []).
+            if k[0] == s:
+                extension[k].append(Formula(k, [], k))
+            else:
+                while s+str(i) in varList or s+str(i) in extension: #esta condicion hay que pensarla bien cuando llamemos a esta funcion con las variables de los proofStates. El or lo puse para poder mientras ir probandola (la llamo con varList siendo []).
+                    i += 1
+                extension[k].append(Formula(s+str(i), [], s+str(i)))
+                newVars.append(s+str(i))
                 i += 1
-            extension[k].append(Formula(s+str(i), [], s+str(i)))
-            newVars.append(s+str(i))
-            i += 1
 
 def chew(): #cuando extension tiene exactamente un elemento por lista, esta funcion va agregando capas de elementos que cada uno es igual al anterior pero reemplazando cada metavariable que sea una key en extension por lo que tiene esa metavariable en la capa 0 de su lista en extension.
     numFinished = 0
@@ -374,7 +411,7 @@ def chewForLoops(s, varList): #es igual a chew, solo que esta se usa cuando el g
             if extension[k][-1].contains(k):
                 if extension[k][-1].text == k:
                     if finalReplacing[k] == []:
-                        finalReplacing[k].append(extension[k][-1]) #lo agrega a finalReplacing si (no había nada todavia en ese lugar y) loopea sin agrandarse.
+                        finalReplacing[k].append([k][-1]) #lo agrega a finalReplacing si (no había nada todavia en ese lugar y) loopea sin agrandarse.
                         numFinished += 1
                 else:
                     return False
@@ -636,7 +673,7 @@ r2 = Rule("r", [Formula('', [], "p1")], Formula('', [], "V(p1,p2)"))
 #infRules = []
 #infRules.append(Rule('Neation introduction', [Formula('', [], "->(p1,p2)"), Formula()]))
 
-prob = Problem("^(V(A1,~(A1)),->(~(A2),A2))")
+#prob = Problem(["^(V(A1,~(A1)),->(~(A2),A2))"])
 
 
 symbols = ["!", "->", "-->", "^", "V", "<->", "A1", "A2", "a1", "a2", "a3", "a4", "p1", "p2", "p3"]
@@ -710,7 +747,7 @@ InfRules["Biconditional elimination <-"] = Rule("Biconditional elimination <-", 
 InfRules["Modus ponens"] = Rule("Modus ponens", [Formula('', [], "p1"), Formula('', [], "->(p1,p2)")], Formula('', [], "p2"))
 
 
-
+prob = Problem(["a1", "->(a1,^(A1,a2))", "<->(A1,A1)"])
 
 
 def goForward(r, ind): #le metes una Rule (r) y una lista de indices (ind) y se fija si los Theorems con indice en ind feetean, en ese orden, con las premisas de r. Si si, agrega la conclusion de r a Theorems, reemplazando las metavariables por lo que terminan teniendo en el feeteo. Si quedan metavariables en la conclusion sin reemplazar (por ejemplo en Negation elimination) le pregunta al usuarie que le quiere meter.
